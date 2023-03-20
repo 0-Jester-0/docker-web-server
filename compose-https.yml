@@ -1,0 +1,16 @@
+version: "3"
+services:
+  webserver:
+    volumes:
+      - ./services/certbot/conf:/etc/letsencrypt
+      - ./services/certbot/www:/var/.docker/certbot/www
+      - ./services/nginx/templates/https.conf.template:/etc/nginx/templates/website.conf.template
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    restart: "no"
+    volumes:
+      - ./log/letsencrypt:/var/www/log/letsencrypt
+      - ./services/certbot/conf:/etc/letsencrypt
+      - ./services/certbot/www:/var/www/.docker/certbot/www

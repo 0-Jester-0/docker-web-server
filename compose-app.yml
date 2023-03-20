@@ -1,0 +1,85 @@
+version: "3"
+services:
+  mysql:
+    image: mysql
+    container_name: mysql
+    restart: unless-stopped
+    tty: true
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_{PASSWORD}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_USER_PASSWORD}
+    volumes:
+      - ./backups:/var/www/.backups
+      - ./services/mysql/default.conf:/etc/mysql/default.conf
+      - database:/var/lib/mysql
+    networks:
+      - backend
+
+  php-fpm:
+    image: php:8.1-fpm
+    container_name: php-fpm
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GID: ${SYSTEM_GROUP_ID}
+        UID: ${SYSTEM_USER_ID}
+        SMTP_HOST: ${MAIL_SMTP_HOST}
+        SMTP_PORT: ${MAIL_SMTP_PORT}
+        SMTP_EMAIL: ${MAIL_SMTP_EMAIL}
+        SMTP_PASSWORD: ${MAIL_SMTP_PASSWORD}
+    restart: unless-stopped
+    tty: true
+    working_dir: var/www/app
+    volumes:
+      - .app:/var/www/app
+      - ./log:/var/www/log
+      - /services/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - backend
+    links:
+      - "webserver: ${APP_NAME}"
+
+  composer:
+    build:
+      context: .
+    image: composer
+    container_name: composer
+    working_dir: /var/www/app
+    command: "composer install"
+    restart: "no"
+    depends_on:
+      - app
+    volumes:
+      - ./app:/var/www/app
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./app/public:/var/www/app/public
+      - ./log:/var/www/log
+      - ./services/nginx/default.conf:/etc/nginx/includes/default.conf
+      - ./services/nginx/templates/http.conf:/etc/nginx/templates/website.conf.template
+    environment:
+      - APP_NAME = ${APP_NAME}
+    networks:
+      - frontend
+      - backend
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+
+volumes:
+  mysql:
+
